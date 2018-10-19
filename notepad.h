@@ -1,9 +1,10 @@
 #ifndef NOTEPAD_H
 #define NOTEPAD_H
 #include <QMainWindow>
-#include <QTextEdit>
+#include <QPlainTextEdit>
 #include "search.h"
-
+#include <QCloseEvent>
+#include <QMessageBox>
 namespace Ui {
 class Notepad;
 
@@ -16,14 +17,11 @@ class Notepad : public QMainWindow
 public:
     explicit Notepad(QWidget *parent = 0);
     ~Notepad();
-    //QString word;
-    Search search;
+    Search *search;
     int tabIndex;
     int currentTab;
-    QHash<int,QTextEdit*> pad;
+    QHash<int,QPlainTextEdit*> pad;
     QHash<int, QString*> saveFlag;
-
-
 private slots:
     void on_actionNew_triggered();
 
@@ -51,8 +49,12 @@ private slots:
 
     void on_actionCut_triggered();
 
+    void testfun();
+
 private:
     Ui::Notepad *ui;
+protected:
+    void closeEvent(QCloseEvent *);
 };
 
 

@@ -1,7 +1,8 @@
 #ifndef SEARCH_H
 #define SEARCH_H
 #include <QDialog>
-#include <QTextEdit>
+#include <QPlainTextEdit>
+#include <QCloseEvent>
 namespace Ui {
 class Search;
 }
@@ -14,7 +15,7 @@ public:
     QString word;
     QString selectedWord;
     int j = 0;
-    QTextEdit *edit_area;
+    QPlainTextEdit *edit_area;
     explicit Search(QWidget *parent = 0);
     ~Search();
 
@@ -27,5 +28,7 @@ private slots:
 
 private:
     Ui::Search *ui;
+protected:
+    void closeEvent(QCloseEvent *);
 };
 #endif // SEARCH_H

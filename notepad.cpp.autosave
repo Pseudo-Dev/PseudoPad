@@ -248,6 +248,8 @@ void Notepad::closeEvent(QCloseEvent *event)
           break;
       }
 }
-void Notepad::testfun()
-{}
+void Notepad::detect()
+{
+    SIGNAL
+}
 

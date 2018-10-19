@@ -5,7 +5,6 @@
 #include <QTextStream>
 #include <QTextCursor>
 #include <QMessageBox>
-
 Search::Search(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::Search)
@@ -24,7 +23,6 @@ void Search::on_pushButton_clicked()
     QString searchString;
     searchString = ui->lineEdit->text(); //get the string to be searched.
     QTextCursor Cursor = edit_area->textCursor(); //Make a QTextCursor object and pass the QTextEdit to do operations on the QTextEdit
-
     //If forwards checking is selected.
     if (ui->radioButton->isChecked())
     {
@@ -39,7 +37,7 @@ void Search::on_pushButton_clicked()
         }
     }
 
-    //if you want to check backwards.
+    //if you want to check the other direction?
     else if (ui->radioButton_2->isChecked())
     {
         j = Cursor.position()-searchString.length()-1;
@@ -80,9 +78,9 @@ void Search::on_pushButton_clicked()
              Cursor.movePosition(QTextCursor::NextCharacter,QTextCursor::KeepAnchor);
              edit_area->setTextCursor(Cursor);
          }
-         else if(pos == -1 || ui->radioButton->isChecked()) //Otherwise ask to go backwards.
+         else if(pos == -1 || ui->radioButton->isChecked()) //Otherwise ask to go the other direction?.
          {
-             QMessageBox::information(this, "Info", "Word Not found.\n(Maybe try going backwards?)");
+             QMessageBox::information(this, "Info", "Word Not found.\n(Maybe try going the other direction?)");
          }
     }
     else //If the document doesnt have the word
@@ -91,7 +89,6 @@ void Search::on_pushButton_clicked()
     }
 
 }
-
 void Search::on_pushButton_2_clicked()
 {
     //replacing the text.
@@ -99,4 +96,8 @@ void Search::on_pushButton_2_clicked()
     QTextCursor Cursor = edit_area->textCursor();
     Cursor.removeSelectedText();
     Cursor.insertText(replaceString);
+}
+void Search::closeEvent(QCloseEvent *event)
+{
+    delete this;
 }
