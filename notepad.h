@@ -49,7 +49,7 @@ private slots:
 
     void on_actionCut_triggered();
 
-    void testfun();
+    void setName();
 
 private:
     Ui::Notepad *ui;

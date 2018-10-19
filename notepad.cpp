@@ -31,6 +31,7 @@ Notepad::Notepad(QWidget *parent) :QMainWindow(parent),
     saveFlag.insert(tabIndex, openedFile); //Save the index with the saveFlag.
     ui->tabWidget->setTabToolTip(currentTab, "Not saved yet");
     setWindowTitle("PseudoPad");
+    QObject::connect(tempPad, SIGNAL(textChanged()), this, SLOT(setName()));
 }
 Notepad::~Notepad()
 {
@@ -52,8 +53,18 @@ void Notepad::on_actionNew_triggered()
     //storing the values in the QHash table.
     pad.insert(tabIndex,tempPad);
     ui->tabWidget->setTabToolTip(currentTab, "Not saved Yet");
-    setWindowTitle("Untitled - PseudoPad");
+    QString tabName = "Untitled - PseudoPad";
+    setWindowTitle(tabName);
     saveFlag.insert(tabIndex, openedFile);
+    QObject::connect(tempPad, SIGNAL(textChanged()), this, SLOT(setName()));
+}
+void Notepad::setName()
+{
+    currentTab = ui->tabWidget->currentIndex();
+    QString tabName = ui->tabWidget->tabText(currentTab);
+    if (!tabName.contains("*"))
+    tabName.append("  *");
+    ui->tabWidget->setTabText(currentTab, tabName);
 }
 void Notepad::on_actionOpen_triggered()
 {
@@ -77,14 +88,19 @@ void Notepad::on_actionOpen_triggered()
 
     QTextStream in(&file); //QTextStream object to reall all contents.
     QString text = in.readAll(); //store the contents in a QString
-    QPlainTextEdit *documentArea = pad[currentTab]; //get the current QPlainTextEdit we are working on using the tabIndex for openning the contents in that textedit.
+    QPlainTextEdit *documentArea = pad[currentTab]; //get the QPlainTextEdit associated to the tab we are working on.
+
+    QObject::disconnect(documentArea, SIGNAL(textChanged()),this, SLOT(setName()));
+
     documentArea->setPlainText(text);
+
+    QObject::connect(documentArea, SIGNAL(textChanged()), this, SLOT(setName()));
+
     file.close();
 }
 void Notepad::on_actionSave_triggered()
 {
     int flag = 0;
-
     currentTab = ui->tabWidget->currentIndex();
     QString filename;
     QString *chkSave = saveFlag[currentTab]; // Get the QString of the current tab.
@@ -107,11 +123,7 @@ void Notepad::on_actionSave_triggered()
         return;
         flag = 1;
     }
-    if (flag != 1)
-    {
-        ui->tabWidget->setTabText(currentTab, name);
-        setWindowTitle(name + " - PseudoPad");
-    }
+
     QTextStream out(&file); //Create the QTextStream to save all contents from the QPlainTextEdit to the file.
 
     QPlainTextEdit *documentArea = pad[currentTab]; //get the QPlainTextEdit associated to the tab we are working on.
@@ -121,6 +133,11 @@ void Notepad::on_actionSave_triggered()
     out << text; // Copy the contents.
 
     ui->tabWidget->setTabToolTip(currentTab, "Location: "+filename);
+    if (flag != 1)
+    {
+        ui->tabWidget->setTabText(currentTab, name);
+        setWindowTitle(name + " - PseudoPad");
+    }
     file.close();
 }
 void Notepad::on_actionSave_As_triggered()
@@ -233,21 +250,40 @@ void Notepad::on_actionCut_triggered()
 }
 void Notepad::closeEvent(QCloseEvent *event)
 {
-      int ret = QMessageBox::question (this, "Information", "Any unsaved progress will be lost.\nAre you sure?", QMessageBox::Save, QMessageBox::Discard, QMessageBox::Cancel);
-      switch (ret)
+      int flag = 0;
+      QHash<int,QPlainTextEdit*>::iterator i;
+      QString tempName;
+      QString name;
+      for (i = pad.begin(); i != pad.end(); ++i)
       {
-        case QMessageBox::Save:
-          Notepad::on_actionSave_triggered();
-          break;
-        case QMessageBox::Discard:
-          break;
-        case QMessageBox::Cancel:
-          event->ignore();
-          break;
-        default:
-          break;
+          tempName = ui->tabWidget->tabText(i.key());
+          if (tempName.contains("*"))
+          {
+              flag++;
+              name.append(tempName + '\n');
+          }
+      }
+      int ret;
+      if (flag != 0)
+      {
+          ret = QMessageBox::question (this, "Information", "These files are not saved:\n" + name + "\nAre you sure?", QMessageBox::Save, QMessageBox::Discard, QMessageBox::Cancel);
+          switch (ret)
+          {
+            case QMessageBox::Save:
+              Notepad::on_actionSave_triggered();
+              break;
+            case QMessageBox::Discard:
+              break;
+            case QMessageBox::Cancel:
+              event->ignore();
+              break;
+            default:
+              break;
+          }
+      }
+      else
+      {
+          this->close();
       }
 }
-void Notepad::testfun()
-{}
 
