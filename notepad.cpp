@@ -6,32 +6,75 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QTextStream>
+#include <QPaintEvent>
 #include <QFontDialog>
 #include <QTextCursor>
+#include <qpainter.h>
+#include <QTextBlock>
 Notepad::Notepad(QWidget *parent) :QMainWindow(parent),
     ui(new Ui::Notepad)
 {
     //Graphic Part
     ui->setupUi(this);
+    QLabel *label = new QLabel;
+    label->setText("Press on the \"+\" button to create a new tab or press ctrl+N");
+    label->setAlignment(Qt::AlignHCenter);
+    label->setAlignment(Qt::AlignCenter);
+    QFont f( "Bitstream Character", 15);
+    label->setFont(f);
     this->setCentralWidget(ui->tabWidget); //Make sure that tabWidget occupies the entire parent space.
-    ui->tabWidget->setTabShape(QTabWidget::Triangular); //Make the tab look triangular.
-
-    //Create the required Components
-    QPlainTextEdit *tempPad = new QPlainTextEdit(); //Insert a textEdit when you open a new tab.
-    QString *openedFile = new QString; //For the saveFlag. The saveFlag checks if a file was saved in the current session.
+    ui->tabWidget->setTabsClosable(1);
+    ui->tabWidget->setMovable(1);
 
     //Add the tab
-    ui->tabWidget->addTab(tempPad, "New Text"); //Add a tab with the textEdit.
-    ui->tabWidget->setCurrentWidget(tempPad); //Change focus to the new tab.
+    ui->tabWidget->setCurrentWidget(label); //Change focus to the new tab.
+    ui->tabWidget->addTab(label,"");
 
-    //tab related ops and storing
-    currentTab = ui->tabWidget->currentIndex(); //Get the current tab index for operations on the tab.
-    tabIndex = ui->tabWidget->currentIndex(); //Get the current index for saving on the QHash table (pad).
-    pad.insert(tabIndex,tempPad); //Save the index with the corresponding QPlainTextEdit.
-    saveFlag.insert(tabIndex, openedFile); //Save the index with the saveFlag.
-    ui->tabWidget->setTabToolTip(currentTab, "Not saved yet");
+    QPushButton *button = new QPushButton();
+    QRect rect(1,0,20,20);
+    button->setGeometry(rect);
+    button->setText("+");
+    QTabBar *tab = new QTabBar;
+    tab = ui->tabWidget->tabBar();
+    tab->setTabButton(currentTab,QTabBar::RightSide, button);
+    tab->setMovable(1);
+
+    ui->tabWidget->setStyleSheet("QTabWidget::pane { border: 0; }");
+
     setWindowTitle("PseudoPad");
-    QObject::connect(tempPad, SIGNAL(textChanged()), this, SLOT(setName()));
+    QObject::connect(ui->tabWidget, SIGNAL(tabCloseRequested(int)), this, SLOT(tabRemover())); //tab remover signal
+    QObject::connect(button, SIGNAL(clicked()), this ,SLOT(on_actionNew_triggered())); //adding tabs
+    //for line numbers
+
+
+}
+int Notepad::tabRemover()
+{
+    currentTab = ui->tabWidget->currentIndex();
+    QString name;
+    name = ui->tabWidget->tabText(currentTab);
+    int ret;
+    if (name.contains("*"))
+    {
+        ret = QMessageBox::question(this, "Information", "You have not saved this document.\nDo you want to save it?", QMessageBox::Save, QMessageBox::Discard, QMessageBox::Cancel);
+        switch (ret)
+        {
+          case QMessageBox::Save:
+            Notepad::on_actionSave_triggered();
+            break;
+          case QMessageBox::Discard:
+            break;
+          case QMessageBox::Cancel:
+            return 0;
+            break;
+          default:
+            break;
+        }
+    }
+   delete ui->tabWidget->widget(currentTab);
+   QObject::disconnect(ui->tabWidget, SIGNAL(tabCloseRequested(int)), this, SLOT(tabRemover())); //so that all the tabs dont get deleted in a chain.
+   QObject::connect(ui->tabWidget, SIGNAL(tabCloseRequested(int)), this, SLOT(tabRemover())); //reconnect to delete tabs feature again.
+   return 0;
 }
 Notepad::~Notepad()
 {
@@ -40,23 +83,145 @@ Notepad::~Notepad()
 void Notepad::on_actionNew_triggered()
 {
     //Create required components
-    QPlainTextEdit *tempPad = new QPlainTextEdit();
+    note = new PadArea;
     QString *openedFile = new QString;
 
     //add the tabs
-    ui->tabWidget->addTab(tempPad, "New Text");
-    ui->tabWidget->setCurrentWidget(tempPad);
+    ui->tabWidget->addTab(note->noteArea, "Untitled");
+    ui->tabWidget->setCurrentWidget(note->noteArea);
 
     currentTab = ui->tabWidget->currentIndex();
     tabIndex = ui->tabWidget->currentIndex();
 
     //storing the values in the QHash table.
-    pad.insert(tabIndex,tempPad);
+    pad.insert(tabIndex,note);
     ui->tabWidget->setTabToolTip(currentTab, "Not saved Yet");
     QString tabName = "Untitled - PseudoPad";
     setWindowTitle(tabName);
     saveFlag.insert(tabIndex, openedFile);
-    QObject::connect(tempPad, SIGNAL(textChanged()), this, SLOT(setName()));
+    QObject::connect(note->noteArea, SIGNAL(textChanged()), this, SLOT(setName()));
+    QObject::connect(note->noteArea, SIGNAL(blockCountChanged(int)), this, SLOT(updateLineNumberAreaWidth(int)));
+    QObject::connect(note->noteArea, SIGNAL(updateRequest(QRect,int)), this, SLOT(updateLineNumberArea(QRect,int)));
+    QObject::connect(note->noteArea, SIGNAL(cursorPositionChanged()), this, SLOT(highlightCurrentLine()));
+    updateLineNumberAreaWidth(0);
+    highlightCurrentLine();
+    note->lineNumberArea = new LineNumberArea(note);
+    note->update();
+}
+void PadArea::lineNumberAreaPaintEvent(QPaintEvent *event)
+{
+qDebug("s2");
+
+    QPainter painter(lineNumberArea);
+
+    painter.fillRect(event->rect(), Qt::lightGray);
+
+
+    QTextBlock block = firstVisibleBlock();
+    int blockNumber = block.blockNumber();
+    int top = (int) blockBoundingGeometry(block).translated(contentOffset()).top();
+    int bottom = top + (int) blockBoundingRect(block).height();
+
+    while (block.isValid() && top <= event->rect().bottom()) {
+        if (block.isVisible() && bottom >= event->rect().top()) {
+            QString number = QString::number(blockNumber + 1);
+            painter.setPen(Qt::black);
+            painter.drawText(0, top, width(), fontMetrics().height(),
+                             Qt::AlignRight, number);
+        }
+
+        block = block.next();
+        top = bottom;
+        bottom = top + (int) blockBoundingRect(block).height();
+        ++blockNumber;
+    }
+}
+
+int Notepad::lineNumberAreaWidth()
+{
+    QPlainTextEdit *tempNote = new QPlainTextEdit;
+    currentTab = ui->tabWidget->currentIndex();
+    tempNote = pad[currentTab];
+
+    int digits = 1;
+    qDebug ("%d",digits);
+    int max = qMax(1, tempNote->blockCount());
+    while (max >= 10) {
+        max /= 10;
+        ++digits;
+    }
+
+    int space = 3 * digits * 4;
+
+    return space;
+}
+
+
+
+void Notepad::updateLineNumberAreaWidth(int /* newBlockCount */)
+{
+    PadArea *note = new PadArea;
+    currentTab = ui->tabWidget->currentIndex();
+    note = pad[currentTab];
+
+    int temp = lineNumberAreaWidth();
+    note->setMargin(temp);
+}
+
+
+
+void Notepad::updateLineNumberArea(const QRect &rect, int dy)
+{
+    qDebug("q");
+    PadArea *note = new PadArea;
+    currentTab = ui->tabWidget->currentIndex();
+    note->noteArea = pad[currentTab];
+
+    if (dy)
+        note->noteArea->scroll(0, dy);
+    //else
+        //note->noteArea->update(0, rect.y(), note->noteArea->width(), rect.height());
+
+    if (rect.contains(note->noteArea->viewport()->rect()))
+        updateLineNumberAreaWidth(0);
+}
+
+
+
+void PadArea::resizeEvent(QResizeEvent *e)
+{
+    PadArea *note = new PadArea;
+
+    note->resizeEvent(e);
+
+    QRect cr = contentsRect();
+    note->setGeometry(QRect(cr.left(), cr.top(), 5, cr.height()));
+}
+
+
+
+void Notepad::highlightCurrentLine()
+{
+    PadArea *tempNote = new PadArea;
+    currentTab = ui->tabWidget->currentIndex();
+    tempNote = pad[currentTab];
+
+    QList<QTextEdit::ExtraSelection> extraSelections;
+
+    /*if (!isReadOnly())
+    {
+        QTextEdit::ExtraSelection selection;
+
+        QColor lineColor = QColor(Qt::yellow).lighter(160);
+
+        selection.format.setBackground(lineColor);
+        selection.format.setProperty(QTextFormat::FullWidthSelection, true);
+        selection.cursor = tempNote->textCursor();
+        selection.cursor.clearSelection();
+        extraSelections.append(selection);
+    }*/
+
+    tempNote->setExtraSelections(extraSelections);
 }
 void Notepad::setName()
 {
@@ -66,6 +231,7 @@ void Notepad::setName()
     tabName.append("  *");
     ui->tabWidget->setTabText(currentTab, tabName);
 }
+
 void Notepad::on_actionOpen_triggered()
 {
     currentTab = ui->tabWidget->currentIndex(); // get the current index
@@ -79,6 +245,11 @@ void Notepad::on_actionOpen_triggered()
         QMessageBox::warning(this, "Warning", "Cannot Open file\n Reason: " + file.errorString());
         return;
     }
+    if (currentTab == 0)
+    {
+        on_actionNew_triggered();
+    }
+
 
     *saveFlag[currentTab] = filename; //save the name in the saveFlag so that it doesnt ask you to save if you choose to save the file because the file already exists. Choose save as for saving again with different name and/or extensions.
 
@@ -88,13 +259,14 @@ void Notepad::on_actionOpen_triggered()
 
     QTextStream in(&file); //QTextStream object to reall all contents.
     QString text = in.readAll(); //store the contents in a QString
+
     QPlainTextEdit *documentArea = pad[currentTab]; //get the QPlainTextEdit associated to the tab we are working on.
 
-    QObject::disconnect(documentArea, SIGNAL(textChanged()),this, SLOT(setName()));
+    QObject::disconnect(documentArea, SIGNAL(textChanged()),this, SLOT(setName())); //if you open, you won't have a "*" in the tab name. so disconnect that signal
 
     documentArea->setPlainText(text);
 
-    QObject::connect(documentArea, SIGNAL(textChanged()), this, SLOT(setName()));
+    QObject::connect(documentArea, SIGNAL(textChanged()), this, SLOT(setName())); //reconnect the signal for the "*"
 
     file.close();
 }
@@ -251,7 +423,7 @@ void Notepad::on_actionCut_triggered()
 void Notepad::closeEvent(QCloseEvent *event)
 {
       int flag = 0;
-      QHash<int,QPlainTextEdit*>::iterator i;
+      QHash<int,PadArea*>::iterator i;
       QString tempName;
       QString name;
       for (i = pad.begin(); i != pad.end(); ++i)
@@ -266,7 +438,7 @@ void Notepad::closeEvent(QCloseEvent *event)
       int ret;
       if (flag != 0)
       {
-          ret = QMessageBox::question (this, "Information", "These files are not saved:\n" + name + "\nAre you sure?", QMessageBox::Save, QMessageBox::Discard, QMessageBox::Cancel);
+          ret = QMessageBox::question(this, "Information", "These files are not saved:\n" + name + "\nAre you sure you want to close?", QMessageBox::Save, QMessageBox::Discard, QMessageBox::Cancel);
           switch (ret)
           {
             case QMessageBox::Save:
@@ -286,4 +458,5 @@ void Notepad::closeEvent(QCloseEvent *event)
           this->close();
       }
 }
+
 

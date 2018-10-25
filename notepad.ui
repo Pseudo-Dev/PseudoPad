@@ -63,9 +63,16 @@
      <addaction name="actionUPPER"/>
      <addaction name="actionlower"/>
     </widget>
+    <widget class="QMenu" name="menuSet_Environment">
+     <property name="title">
+      <string>Set Environment</string>
+     </property>
+     <addaction name="actionC_C"/>
+    </widget>
     <addaction name="actionFont"/>
     <addaction name="actionSearch_Word"/>
     <addaction name="menuChange_Case"/>
+    <addaction name="menuSet_Environment"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
@@ -176,6 +183,11 @@
   <action name="actionCut">
    <property name="text">
     <string>Cut</string>
+   </property>
+  </action>
+  <action name="actionC_C">
+   <property name="text">
+    <string>C\C++</string>
    </property>
   </action>
  </widget>
