@@ -30,7 +30,9 @@ SOURCES += \
 
 HEADERS += \
         notepad.h \
-    search.h
+    search.h \
+    padarea.h \
+    linenumberarea.h
 
 FORMS += \
         notepad.ui \

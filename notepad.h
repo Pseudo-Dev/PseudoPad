@@ -3,6 +3,8 @@
 #include <QMainWindow>
 #include <QPlainTextEdit>
 #include "search.h"
+#include "padarea.h"
+#include "linenumberarea.h"
 #include <QCloseEvent>
 #include <QMessageBox>
 #include <QTextBlock>
@@ -11,48 +13,6 @@ namespace Ui {
 class Notepad;
 
 }
-class PadArea : public QPlainTextEdit
-{
-    Q_OBJECT
-
-public:
-    PadArea(QWidget *parent = 0);
-
-    void lineNumberAreaPaintEvent(QPaintEvent *event);
-    int lineNumberAreaWidth();
-
-protected:
-    void resizeEvent(QResizeEvent *event) override;
-
-private slots:
-    void updateLineNumberAreaWidth(int newBlockCount);
-    void highlightCurrentLine();
-    void updateLineNumberArea(const QRect &, int);
-
-private:
-    QWidget *lineNumberArea;
-};
-
-
-class LineNumberArea : public QWidget
-{
-public:
-    LineNumberArea(PadArea *editor) : QWidget(editor) {
-        padArea = editor;
-    }
-
-    QSize sizeHint() const override {
-        return QSize(padArea->lineNumberAreaWidth(), 0);
-    }
-
-protected:
-    void paintEvent(QPaintEvent *event) override {
-        padArea->lineNumberAreaPaintEvent(event);
-    }
-
-private:
-    PadArea *padArea;
-};
 class Notepad : public QMainWindow
 {
     Q_OBJECT

@@ -20,7 +20,7 @@ Notepad::Notepad(QWidget *parent) :QMainWindow(parent),
     label->setAlignment(Qt::AlignCenter);
     QFont f( "Bitstream Character", 15);
     label->setFont(f);
-    //this->setCentralWidget(ui->tabWidget); //Make sure that tabWidget occupies the entire parent space.
+    this->setCentralWidget(ui->tabWidget); //Make sure that tabWidget occupies the entire parent space.
     ui->tabWidget->setTabsClosable(1);
     ui->tabWidget->setMovable(1);
 
