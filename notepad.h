@@ -8,6 +8,7 @@
 #include <QCloseEvent>
 #include <QMessageBox>
 #include <QTextBlock>
+#include "highlighter.h"
 class LineNumberArea;
 namespace Ui {
 class Notepad;
@@ -26,6 +27,7 @@ public:
     PadArea *note;
     QHash<int,PadArea*> pad;
     QHash<int, QString*> saveFlag;
+    Highlighter *highlighter;
 
     int lineNumberAreaWidth();
 
@@ -65,6 +67,8 @@ private slots:
 
     int tabRemover(); // Removes Tabs
 
+
+    void on_actionC_C_triggered();
 
 private:
     Ui::Notepad *ui;
