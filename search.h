@@ -3,6 +3,7 @@
 #include <QDialog>
 #include <QPlainTextEdit>
 #include <QCloseEvent>
+#include "highlighter.h"
 namespace Ui {
 class Search;
 }
