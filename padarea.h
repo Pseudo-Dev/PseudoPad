@@ -6,6 +6,7 @@
 #include <QCloseEvent>
 #include <QMessageBox>
 #include <QTextBlock>
+#include "highlighter.h"
 class PadArea : public QPlainTextEdit
 {
     Q_OBJECT
