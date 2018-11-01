@@ -7,6 +7,8 @@
 #include <QCloseEvent>
 #include <QMessageBox>
 #include <QTextBlock>
+#include "highlighter.h"
+
 class LineNumberArea : public QWidget
 {
 public:
