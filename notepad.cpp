@@ -9,7 +9,8 @@
 #include <QFontDialog>
 #include <QTextCursor>
 #include <qpainter.h>
-Notepad::Notepad(QWidget *parent) :QMainWindow(parent),
+#include "highlighter.h"
+Notepad::Notepad(QWidget *parent) : QMainWindow(parent),
     ui(new Ui::Notepad)
 {
     //Graphic Part
@@ -69,14 +70,18 @@ void Notepad::on_actionNew_triggered()
     saveFlag.insert(tabIndex, openedFile);
     QObject::connect(tempPad, SIGNAL(textChanged()), this, SLOT(setName()));
 }
+
 void Notepad::setName()
 {
+    // To get the "*" in your notepad to indicate a change in the notepad.
+
     currentTab = ui->tabWidget->currentIndex();
     QString tabName = ui->tabWidget->tabText(currentTab);
     if (!tabName.contains("*"))
-    tabName.append("  *");
+    tabName.append("  *"); // Append the " *"
     ui->tabWidget->setTabText(currentTab, tabName);
 }
+
 void Notepad::on_actionOpen_triggered()
 {
     currentTab = ui->tabWidget->currentIndex(); // get the current index
@@ -111,6 +116,7 @@ void Notepad::on_actionOpen_triggered()
 }
 int Notepad::tabRemover()
 {
+    // Remove the tab.
     currentTab = ui->tabWidget->currentIndex();
     QString name;
     name = ui->tabWidget->tabText(currentTab);
@@ -206,13 +212,25 @@ void Notepad::on_actionSave_As_triggered()
 
 void Notepad::on_actionCopy_triggered()
 {
+    // Pretty evident what this is for.
     currentTab = ui->tabWidget->currentIndex();
     PadArea *documentArea = pad[currentTab];
     documentArea->copy();
 }
 
+void Notepad::on_actionCut_triggered()
+{
+    // Pretty evident what this is for.
+
+    currentTab = ui->tabWidget->currentIndex();
+    PadArea *documentArea = pad[currentTab];
+    documentArea->cut();
+}
+
 void Notepad::on_actionPaste_triggered()
 {
+    // Pretty evident what this is for.
+
     currentTab = ui->tabWidget->currentIndex();
     PadArea *documentArea = pad[currentTab];
     documentArea->paste();
@@ -220,6 +238,8 @@ void Notepad::on_actionPaste_triggered()
 
 void Notepad::on_actionUndo_triggered()
 {
+    // Pretty evident what this is for.
+
     currentTab = ui->tabWidget->currentIndex();
     PadArea *documentArea = pad[currentTab];
     documentArea->undo();
@@ -227,6 +247,8 @@ void Notepad::on_actionUndo_triggered()
 
 void Notepad::on_actionRedo_triggered()
 {
+    // Pretty evident what this is for.
+
     currentTab = ui->tabWidget->currentIndex();
     PadArea *documentArea = pad[currentTab];
     documentArea->redo();
@@ -281,14 +303,10 @@ void Notepad::on_actionSearch_Word_triggered()
     search->edit_area = documentArea; //pas the current PadArea to the search
     search->show();
 }
-void Notepad::on_actionCut_triggered()
-{
-    currentTab = ui->tabWidget->currentIndex();
-    PadArea *documentArea = pad[currentTab];
-    documentArea->cut();
-}
 void Notepad::closeEvent(QCloseEvent *event)
 {
+       // Save Confirmation if the documents are not closed.
+
       int flag = 0;
       QHash<int,PadArea*>::iterator i;
       QString tempName;
@@ -327,6 +345,8 @@ void Notepad::closeEvent(QCloseEvent *event)
 }
 PadArea::PadArea(QWidget *parent) : QPlainTextEdit(parent)
 {
+    //Highlighting the line and adding line number area.
+
     lineNumberArea = new LineNumberArea(this);
 
     connect(this, SIGNAL(blockCountChanged(int)), this, SLOT(updateLineNumberAreaWidth(int)));
@@ -341,6 +361,8 @@ PadArea::PadArea(QWidget *parent) : QPlainTextEdit(parent)
 
 int PadArea::lineNumberAreaWidth()
 {
+    //Determine the width of the bar of the line nuumber area
+
     int digits = 1;
     int max = qMax(1, blockCount());
     while (max >= 10) {
@@ -348,7 +370,7 @@ int PadArea::lineNumberAreaWidth()
         ++digits;
     }
 
-    int space = 3 + 9 * digits;
+    int space = 3 + 11 * digits;
 
     return space;
 }
@@ -357,6 +379,8 @@ int PadArea::lineNumberAreaWidth()
 
 void PadArea::updateLineNumberAreaWidth(int /* newBlockCount */)
 {
+    //change the size of the area according to the number of digits.
+
     setViewportMargins(lineNumberAreaWidth(), 0, 0, 0);
 }
 
@@ -364,6 +388,8 @@ void PadArea::updateLineNumberAreaWidth(int /* newBlockCount */)
 
 void PadArea::updateLineNumberArea(const QRect &rect, int dy)
 {
+    // Changes made if there is scorlling done.
+
     if (dy)
         lineNumberArea->scroll(0, dy);
     else
@@ -375,6 +401,7 @@ void PadArea::updateLineNumberArea(const QRect &rect, int dy)
 
 void PadArea::resizeEvent(QResizeEvent *e)
 {
+    // In the event of a resize, the line number area should also resize accordingly
     QPlainTextEdit::resizeEvent(e);
 
     QRect cr = contentsRect();
@@ -383,6 +410,8 @@ void PadArea::resizeEvent(QResizeEvent *e)
 
 void PadArea::highlightCurrentLine()
 {
+    //For highlighting the current line.
+
     QList<QTextEdit::ExtraSelection> extraSelections;
 
     if (!isReadOnly()) {
@@ -404,9 +433,10 @@ void PadArea::highlightCurrentLine()
 
 void PadArea::lineNumberAreaPaintEvent(QPaintEvent *event)
 {
+    //Painting of the line numbers.
+
     QPainter painter(this->lineNumberArea);
     painter.fillRect(event->rect(), Qt::lightGray);
-
 
     QTextBlock block = firstVisibleBlock();
     int blockNumber = block.blockNumber();
@@ -426,4 +456,108 @@ void PadArea::lineNumberAreaPaintEvent(QPaintEvent *event)
         bottom = top + (int) blockBoundingRect(block).height();
         ++blockNumber;
     }
+}
+
+Highlighter::Highlighter(QTextDocument *parent) : QSyntaxHighlighter(parent)
+{
+    //Syntax highlighting class. Add all the rules for highlighting.
+    HighlightingRule rule;
+
+    keywordFormat.setForeground(Qt::darkBlue);
+    keywordFormat.setFontWeight(QFont::Bold);
+    QStringList keywordPatterns;
+    keywordPatterns << "\\bchar\\b" << "\\bclass\\b" << "\\bconst\\b"
+                    << "\\bdouble\\b" << "\\benum\\b" << "\\bexplicit\\b"
+                    << "\\bfriend\\b" << "\\binline\\b" << "\\bint\\b"
+                    << "\\blong\\b" << "\\bnamespace\\b" << "\\boperator\\b"
+                    << "\\bprivate\\b" << "\\bprotected\\b" << "\\bpublic\\b"
+                    << "\\bshort\\b" << "\\bsignals\\b" << "\\bsigned\\b"
+                    << "\\bslots\\b" << "\\bstatic\\b" << "\\bstruct\\b"
+                    << "\\btemplate\\b" << "\\btypedef\\b" << "\\btypename\\b"
+                    << "\\bunion\\b" << "\\bunsigned\\b" << "\\bvirtual\\b"
+                    << "\\bvoid\\b" << "\\bvolatile\\b" << "\\bbool\\b";
+    foreach (const QString &pattern, keywordPatterns) {
+        rule.pattern = QRegularExpression(pattern);
+        rule.format = keywordFormat;
+        highlightingRules.append(rule);
+    }
+
+    classFormat.setFontWeight(QFont::Bold);
+    classFormat.setForeground(Qt::darkMagenta);
+    rule.pattern = QRegularExpression("\\bQ[A-Za-z]+\\b");
+    rule.format = classFormat;
+    highlightingRules.append(rule);
+
+    singleLineCommentFormat.setForeground(Qt::red);
+    rule.pattern = QRegularExpression("//[^\n]*");
+    rule.format = singleLineCommentFormat;
+    highlightingRules.append(rule);
+
+    multiLineCommentFormat.setForeground(Qt::red);
+
+    quotationFormat.setForeground(Qt::darkGreen);
+    rule.pattern = QRegularExpression("\".*\"");
+    rule.format = quotationFormat;
+    highlightingRules.append(rule);
+
+    functionFormat.setFontItalic(true);
+    functionFormat.setForeground(Qt::blue);
+    rule.pattern = QRegularExpression("\\b[A-Za-z0-9_]+(?=\\()");
+    rule.format = functionFormat;
+    highlightingRules.append(rule);
+
+    preprocessor_macrosFormat.setForeground(Qt::darkCyan);
+    rule.pattern = QRegularExpression ("#[^\n]*");
+    rule.format = preprocessor_macrosFormat;
+    highlightingRules.append(rule);
+
+    commentStartExpression = QRegularExpression("/\\*");
+    commentEndExpression = QRegularExpression("\\*/");
+}
+
+void Highlighter::highlightBlock(const QString &text)
+{
+    //Matching of expressions.
+
+    foreach (const HighlightingRule &rule, highlightingRules) {
+        QRegularExpressionMatchIterator matchIterator = rule.pattern.globalMatch(text);
+        while (matchIterator.hasNext()) {
+            QRegularExpressionMatch match = matchIterator.next();
+            setFormat(match.capturedStart(), match.capturedLength(), rule.format);
+        }
+    }
+    setCurrentBlockState(0);
+
+    int startIndex = 0;
+    if (previousBlockState() != 1)
+        startIndex = text.indexOf(commentStartExpression);
+
+    while (startIndex >= 0) {
+        QRegularExpressionMatch match = commentEndExpression.match(text, startIndex);
+        int endIndex = match.capturedStart();
+        int commentLength = 0;
+        if (endIndex == -1) {
+            setCurrentBlockState(1);
+            commentLength = text.length() - startIndex;
+        } else {
+            commentLength = endIndex - startIndex
+                            + match.capturedLength();
+        }
+        setFormat(startIndex, commentLength, multiLineCommentFormat);
+        startIndex = text.indexOf(commentStartExpression, startIndex + commentLength);
+    }
+}
+
+void Notepad::on_actionC_C_triggered()
+{
+    //Highlighting will be triggered only when you set te environment as C/C++.
+
+    PadArea *temp = new PadArea;
+    currentTab = ui->tabWidget->currentIndex();
+    temp = pad[currentTab];
+    QString docContent = temp->toPlainText();
+
+    temp->clear();
+    highlighter = new Highlighter(temp->document());
+    temp->setPlainText(docContent);
 }
