@@ -9,6 +9,7 @@
 #include <QFontDialog>
 #include <QTextCursor>
 #include <qpainter.h>
+#include <QProcess>
 #include "highlighter.h"
 Notepad::Notepad(QWidget *parent) : QMainWindow(parent),
     ui(new Ui::Notepad)
@@ -22,12 +23,13 @@ Notepad::Notepad(QWidget *parent) : QMainWindow(parent),
     QFont f( "Bitstream Character", 15);
     label->setFont(f);
     this->setCentralWidget(ui->tabWidget); //Make sure that tabWidget occupies the entire parent space.
-    ui->tabWidget->setTabsClosable(1);
+    //ui->tabWidget->setTabsClosable(1);
     ui->tabWidget->setMovable(1);
 
         //Add the tab
     ui->tabWidget->setCurrentWidget(label); //Change focus to the new tab.
     ui->tabWidget->addTab(label,"");
+    currentTab = ui->tabWidget->currentIndex();
 
     QPushButton *button = new QPushButton();
     QRect rect(1,0,20,20);
@@ -41,6 +43,7 @@ Notepad::Notepad(QWidget *parent) : QMainWindow(parent),
     ui->tabWidget->setStyleSheet("QTabWidget::pane { border: 0; }");
 
     setWindowTitle("PseudoPad");
+
     QObject::connect(ui->tabWidget, SIGNAL(tabCloseRequested(int)), this, SLOT(tabRemover())); //tab remover signal
     QObject::connect(button, SIGNAL(clicked()), this ,SLOT(on_actionNew_triggered())); //adding tabs
 
@@ -101,6 +104,10 @@ void Notepad::on_actionOpen_triggered()
     ui->tabWidget->setTabText(currentTab, name);
     setWindowTitle(name + " - PseudoPad");
     ui->tabWidget->setTabToolTip(currentTab, "Location: "+filename);
+    if (filename.contains(".cpp") ||filename.contains(".c") )
+    {
+        on_actionC_C_triggered();
+    }
 
     QTextStream in(&file); //QTextStream object to reall all contents.
     QString text = in.readAll(); //store the contents in a QString
@@ -365,7 +372,8 @@ int PadArea::lineNumberAreaWidth()
 
     int digits = 1;
     int max = qMax(1, blockCount());
-    while (max >= 10) {
+    while (max >= 10)
+    {
         max /= 10;
         ++digits;
     }
@@ -414,7 +422,8 @@ void PadArea::highlightCurrentLine()
 
     QList<QTextEdit::ExtraSelection> extraSelections;
 
-    if (!isReadOnly()) {
+    if (!isReadOnly())
+    {
         QTextEdit::ExtraSelection selection;
 
         QColor lineColor = QColor(Qt::yellow).lighter(160);
@@ -443,12 +452,13 @@ void PadArea::lineNumberAreaPaintEvent(QPaintEvent *event)
     int top = (int) blockBoundingGeometry(block).translated(contentOffset()).top();
     int bottom = top + (int) blockBoundingRect(block).height();
 
-    while (block.isValid() && top <= event->rect().bottom()) {
-        if (block.isVisible() && bottom >= event->rect().top()) {
+    while (block.isValid() && top <= event->rect().bottom())
+    {
+        if (block.isVisible() && bottom >= event->rect().top())
+        {
             QString number = QString::number(blockNumber + 1);
             painter.setPen(Qt::black);
-            painter.drawText(0, top, lineNumberArea->width(), fontMetrics().height(),
-                             Qt::AlignRight, number);
+            painter.drawText(0, top, lineNumberArea->width(), fontMetrics().height(), Qt::AlignRight, number);
         }
 
         block = block.next();
@@ -476,7 +486,8 @@ Highlighter::Highlighter(QTextDocument *parent) : QSyntaxHighlighter(parent)
                     << "\\btemplate\\b" << "\\btypedef\\b" << "\\btypename\\b"
                     << "\\bunion\\b" << "\\bunsigned\\b" << "\\bvirtual\\b"
                     << "\\bvoid\\b" << "\\bvolatile\\b" << "\\bbool\\b";
-    foreach (const QString &pattern, keywordPatterns) {
+    foreach (const QString &pattern, keywordPatterns)
+    {
         rule.pattern = QRegularExpression(pattern);
         rule.format = keywordFormat;
         highlightingRules.append(rule);
@@ -519,9 +530,11 @@ void Highlighter::highlightBlock(const QString &text)
 {
     //Matching of expressions.
 
-    foreach (const HighlightingRule &rule, highlightingRules) {
+    foreach (const HighlightingRule &rule, highlightingRules)
+    {
         QRegularExpressionMatchIterator matchIterator = rule.pattern.globalMatch(text);
-        while (matchIterator.hasNext()) {
+        while (matchIterator.hasNext())
+        {
             QRegularExpressionMatch match = matchIterator.next();
             setFormat(match.capturedStart(), match.capturedLength(), rule.format);
         }
@@ -532,14 +545,18 @@ void Highlighter::highlightBlock(const QString &text)
     if (previousBlockState() != 1)
         startIndex = text.indexOf(commentStartExpression);
 
-    while (startIndex >= 0) {
+    while (startIndex >= 0)
+    {
         QRegularExpressionMatch match = commentEndExpression.match(text, startIndex);
         int endIndex = match.capturedStart();
         int commentLength = 0;
-        if (endIndex == -1) {
+        if (endIndex == -1)
+        {
             setCurrentBlockState(1);
             commentLength = text.length() - startIndex;
-        } else {
+        }
+        else
+        {
             commentLength = endIndex - startIndex
                             + match.capturedLength();
         }
@@ -551,6 +568,7 @@ void Highlighter::highlightBlock(const QString &text)
 void Notepad::on_actionC_C_triggered()
 {
     //Highlighting will be triggered only when you set te environment as C/C++.
+    envSetup = "C";
 
     PadArea *temp = new PadArea;
     currentTab = ui->tabWidget->currentIndex();
@@ -560,4 +578,6 @@ void Notepad::on_actionC_C_triggered()
     temp->clear();
     highlighter = new Highlighter(temp->document());
     temp->setPlainText(docContent);
+    QProcess process;
+    process.start("terminal");
 }
